@@ -1,0 +1,50 @@
+name: Attention Bot Scan
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run one scan pass
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          MAX_AGE_HOURS: ${{ vars.MAX_AGE_HOURS }}
+          MIN_MC_USD: ${{ vars.MIN_MC_USD }}
+          MAX_MC_USD: ${{ vars.MAX_MC_USD }}
+          MIN_LIQUIDITY_USD: ${{ vars.MIN_LIQUIDITY_USD }}
+          MAX_LIQUIDITY_USD: ${{ vars.MAX_LIQUIDITY_USD }}
+          MIN_VOLUME_1H_USD: ${{ vars.MIN_VOLUME_1H_USD }}
+          MIN_1H_CHANGE_PCT: ${{ vars.MIN_1H_CHANGE_PCT }}
+          MIN_VOL_LIQ_RATIO: ${{ vars.MIN_VOL_LIQ_RATIO }}
+          MIN_RUGCHECK_SCORE: ${{ vars.MIN_RUGCHECK_SCORE }}
+          MAX_RUGCHECK_SCORE: ${{ vars.MAX_RUGCHECK_SCORE }}
+          MIN_HOLDERS: ${{ vars.MIN_HOLDERS }}
+        run: npm run scan
+
+      - name: Save updated seen-token list
+        run: |
+          git config user.name "attention-bot"
+          git config user.email "actions@github.com"
+          git add data/seen.json
+          git diff --staged --quiet || git commit -m "Update seen tokens [skip ci]"
+          git push
